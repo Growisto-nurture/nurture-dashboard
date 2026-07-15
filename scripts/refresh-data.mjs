@@ -47,6 +47,10 @@ async function coqlAll(token, baseQuery) {
       body: JSON.stringify({ select_query: q }),
     });
     const d = await r.json();
+    // Zoho returns 204/empty on no rows, but an error object on scope/auth problems — fail loudly on those.
+    if (d && (d.code || d.error)) {
+      throw new Error(`COQL error for [${baseQuery.slice(0, 60)}...]: ${JSON.stringify(d)}`);
+    }
     if (!d.data || d.data.length === 0) break;
     rows.push(...d.data);
     if (d.data.length < 200) break;
@@ -167,6 +171,11 @@ async function main() {
       is_pending: isPending,
     };
   });
+
+  // Never deploy an empty dashboard — better to fail the workflow and keep yesterday's data live.
+  if (built.length === 0) {
+    throw new Error("Refusing to deploy: zero accounts returned from Zoho CRM. Check scopes/token.");
+  }
 
   usersMap["__UN__"] = { id: null, full_name: "Unassigned" };
 
