@@ -5,6 +5,8 @@ on:
     # 02:37 UTC = ~08:07 IST every day
     - cron: "37 2 * * *"
   workflow_dispatch: {} # lets you trigger a manual refresh from the GitHub Actions tab
+  push:
+    branches: [main] # also refresh+deploy on every push
 
 jobs:
   refresh-and-deploy:
