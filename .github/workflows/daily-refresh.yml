@@ -8,6 +8,10 @@ on:
   push:
     branches: [main] # also refresh+deploy on every push
 
+permissions:
+  contents: read
+  deployments: write
+
 jobs:
   refresh-and-deploy:
     runs-on: ubuntu-latest
