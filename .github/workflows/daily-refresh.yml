@@ -1,0 +1,33 @@
+name: Daily Nurture Dashboard Refresh
+
+on:
+  schedule:
+    # 02:37 UTC = ~08:07 IST every day
+    - cron: "37 2 * * *"
+  workflow_dispatch: {} # lets you trigger a manual refresh from the GitHub Actions tab
+
+jobs:
+  refresh-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Pull fresh data from Zoho CRM
+        env:
+          ZOHO_CLIENT_ID: ${{ secrets.ZOHO_CLIENT_ID }}
+          ZOHO_CLIENT_SECRET: ${{ secrets.ZOHO_CLIENT_SECRET }}
+          ZOHO_REFRESH_TOKEN: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+        run: node scripts/refresh-data.mjs
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: nurture-dashboard
+          directory: .
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
