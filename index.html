@@ -85,18 +85,24 @@ tailwind.config = {
 
 <!-- FILTER ROW -->
 <div class="filter-row bg-white border-b border-slate-200 shadow-sm">
-  <div class="max-w-7xl mx-auto px-6 py-4 grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
-    <div class="md:col-span-3">
+  <div class="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row md:flex-nowrap gap-3 md:items-end">
+    <div class="flex-1 min-w-0">
       <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Target Account Owner</label>
       <select id="filterOwner" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring"></select>
     </div>
-    <div class="md:col-span-2">
+    <div class="flex-1 min-w-0">
       <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Account Status</label>
       <select id="filterStatus" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
         <option value="ALL">All</option>
       </select>
     </div>
-    <div class="md:col-span-2">
+    <div class="flex-1 min-w-0">
+      <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Business Score</label>
+      <select id="filterBusinessScore" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
+        <option value="ALL">All</option>
+      </select>
+    </div>
+    <div class="flex-1 min-w-0">
       <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Manual Focus</label>
       <select id="filterManualFocus" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
         <option value="ALL">All</option>
@@ -106,7 +112,7 @@ tailwind.config = {
         <option value="BLANK">Not set</option>
       </select>
     </div>
-    <div class="md:col-span-2">
+    <div class="flex-1 min-w-0">
       <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Show</label>
       <select id="filterPending" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
         <option value="ALL">All</option>
@@ -115,16 +121,17 @@ tailwind.config = {
         <option value="NODATE">Needs follow-up date</option>
       </select>
     </div>
-    <div class="md:col-span-1">
+    <div class="flex-1 min-w-0">
       <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Date From</label>
       <input type="date" id="dateFrom" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
     </div>
-    <div class="md:col-span-1">
+    <div class="flex-1 min-w-0">
       <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">Date To</label>
       <input type="date" id="dateTo" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus-ring">
     </div>
-    <div class="md:col-span-1">
-      <button id="resetFilters" class="w-full rounded-lg bg-accent hover:bg-orange-600 text-white font-semibold text-sm px-4 py-2 transition focus-ring">Reset</button>
+    <div class="shrink-0">
+      <label class="block text-[11px] font-semibold text-muted uppercase tracking-wide mb-1">&nbsp;</label>
+      <button id="resetFilters" class="w-full md:w-24 rounded-lg bg-accent hover:bg-orange-600 text-white font-semibold text-sm px-4 py-2 transition focus-ring">Reset</button>
     </div>
   </div>
 </div>
@@ -170,6 +177,7 @@ tailwind.config = {
             <th class="sortable px-6 py-3 text-left font-semibold" data-sort="owner_name">Target Account Owner</th>
             <th class="sortable px-6 py-3 text-left font-semibold" data-sort="status">Account Status</th>
             <th class="sortable px-6 py-3 text-left font-semibold" data-sort="manual_focus">Manual Focus</th>
+            <th class="sortable px-6 py-3 text-center font-semibold" data-sort="business_score">Business Score</th>
             <th class="sortable px-6 py-3 text-center font-semibold" data-sort="note_count"># Actions</th>
             <th class="sortable px-6 py-3 text-left font-semibold" data-sort="next_step_date">Next Step Date</th>
             <th class="px-6 py-3 text-left font-semibold">Pending</th>
@@ -250,6 +258,17 @@ const dateFromEl = document.getElementById('dateFrom');
 const dateToEl   = document.getElementById('dateTo');
 const resetBtn   = document.getElementById('resetFilters');
 
+// Business Score filter — Excel-style dropdown built from the distinct scores present in the data
+const businessScoreSel = document.getElementById('filterBusinessScore');
+const distinctScores = [...new Set(
+  DATA.accounts.map(a => a.business_score).filter(v => v !== null && v !== undefined)
+)].sort((a, b) => b - a);
+for (const s of distinctScores) {
+  const o = document.createElement('option'); o.value = String(s); o.textContent = String(s); businessScoreSel.appendChild(o);
+}
+// "Not set" catches accounts with no Business Score in Zoho
+const blankOpt = document.createElement('option'); blankOpt.value = 'BLANK'; blankOpt.textContent = 'Not set'; businessScoreSel.appendChild(blankOpt);
+
 const state = {
   sortKey: 'note_count',
   sortDir: 'desc',
@@ -260,10 +279,16 @@ function getFilters() {
     owner: ownerSel.value,
     status: statusSel.value,
     manualFocus: manualFocusSel.value,
+    businessScore: businessScoreSel.value,
     pending: pendingSel.value,
     from: dateFromEl.value || null,
     to:   dateToEl.value || null,
   };
+}
+function matchBusinessScore(acc, val) {
+  if (val === 'ALL') return true;
+  if (val === 'BLANK') return acc.business_score === null || acc.business_score === undefined;
+  return String(acc.business_score) === String(val);
 }
 function matchManualFocus(acc, mf) {
   if (mf === 'ALL') return true;
@@ -330,7 +355,7 @@ function statusPillClass(s) {
 function compute() {
   const f = getFilters();
   // Pipeline: salesperson + status (date doesn't affect)
-  const pipeline = DATA.accounts.filter(a => matchOwner(a, f.owner) && matchStatus(a, f.status) && matchManualFocus(a, f.manualFocus));
+  const pipeline = DATA.accounts.filter(a => matchOwner(a, f.owner) && matchStatus(a, f.status) && matchManualFocus(a, f.manualFocus) && matchBusinessScore(a, f.businessScore));
   // Actions matching everything
   let actionsRange = 0; let actionsToday = 0;
   let pendingCount = 0;
@@ -366,6 +391,7 @@ function compute() {
     return {
       id: acc.id, name: acc.name, owner_name: acc.owner_name, status: acc.status,
       manual_focus: acc.manual_focus || null,
+      business_score: (acc.business_score === undefined ? null : acc.business_score),
       note_count: noteSubset.length, last_action_date: lastDate, snippet: snippet,
       next_action_text: acc.next_action_text, next_step_date: acc.next_step_date,
       is_pending: acc.is_pending,
@@ -400,6 +426,7 @@ function compute() {
       <td class="px-6 py-3 text-body">${escapeHtml(r.owner_name)}</td>
       <td class="px-6 py-3"><span class="${statusPillClass(r.status)}">${escapeHtml(r.status)}</span></td>
       <td class="px-6 py-3">${manualFocusPill(r.manual_focus)}</td>
+      <td class="px-6 py-3 text-center font-semibold ${(r.business_score !== null && r.business_score !== undefined) ? 'text-navy' : 'text-slate-400'}">${(r.business_score !== null && r.business_score !== undefined) ? r.business_score : '—'}</td>
       <td class="px-6 py-3 text-center font-semibold ${r.note_count > 0 ? 'text-navy' : 'text-slate-400'}">${r.note_count}</td>
       <td class="px-6 py-3 text-muted max-w-xs">${nextActionCell}</td>
       <td class="px-6 py-3">${statusPill(accObj)}</td>
@@ -531,9 +558,9 @@ document.querySelectorAll('th.sortable').forEach(th => {
   });
 });
 
-[ownerSel, statusSel, manualFocusSel, pendingSel, dateFromEl, dateToEl].forEach(el => el.addEventListener('change', compute));
+[ownerSel, statusSel, manualFocusSel, businessScoreSel, pendingSel, dateFromEl, dateToEl].forEach(el => el.addEventListener('change', compute));
 resetBtn.addEventListener('click', () => {
-  ownerSel.value = 'ALL'; statusSel.value = 'ALL'; manualFocusSel.value = 'ALL'; pendingSel.value = 'ALL'; dateFromEl.value = ''; dateToEl.value = '';
+  ownerSel.value = 'ALL'; statusSel.value = 'ALL'; manualFocusSel.value = 'ALL'; businessScoreSel.value = 'ALL'; pendingSel.value = 'ALL'; dateFromEl.value = ''; dateToEl.value = '';
   state.sortKey = 'note_count'; state.sortDir = 'desc';
   compute();
 });

@@ -108,7 +108,7 @@ async function main() {
     const inList = ids.map((id) => `'${id}'`).join(",");
     const rows = await coqlAll(
       token,
-      `SELECT id, Name, Owner, Account_Status, Next_Step_Date, Manual_Focus FROM Target_Accounts WHERE id in (${inList})`
+      `SELECT id, Name, Owner, Account_Status, Next_Step_Date, Manual_Focus, Business_Case_Score FROM Target_Accounts WHERE id in (${inList})`
     );
     for (const a of rows) accountsById[a.id] = a;
   }
@@ -116,7 +116,7 @@ async function main() {
   // 3. ALSO pull every Active Sales funnel account, even with zero nurture notes
   const activeFunnelRows = await coqlAll(
     token,
-    `SELECT id, Name, Owner, Account_Status, Next_Step_Date, Manual_Focus FROM Target_Accounts WHERE Account_Status = 'Active Sales funnel'`
+    `SELECT id, Name, Owner, Account_Status, Next_Step_Date, Manual_Focus, Business_Case_Score FROM Target_Accounts WHERE Account_Status = 'Active Sales funnel'`
   );
   for (const a of activeFunnelRows) accountsById[a.id] = a;
 
@@ -162,6 +162,7 @@ async function main() {
       status: normalizeStatus(a.Account_Status),
       raw_status: a.Account_Status,
       manual_focus: a.Manual_Focus || null,
+      business_score: (a.Business_Case_Score === undefined ? null : a.Business_Case_Score),
       next_step_date: nsd,
       notes,
       note_count: notes.length,
